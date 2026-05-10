@@ -62,18 +62,9 @@ Add the engine dependencies to your project:
 4. Tick the following:
 
 - `Sedulous.Engine.App`
-- `Sedulous.Engine.Core`
-- `Sedulous.Engine.Render`
-- `Sedulous.Runtime`
-- `Sedulous.Renderer`
-- `Sedulous.RHI`
-- `Sedulous.Core.Mathematics`
-- `Sedulous.Geometry.Resources`
-- `Sedulous.Resources`
-- `Sedulous.Images.IO`
 - `Sedulous.Images.STB`
 
-`Sedulous.Engine.App` already pulls in both RHI backends (Vulkan and DX12), the shell, and other core dependencies transitively. You only need to tick libraries whose types you use directly in your code.
+`Sedulous.Engine.App` pulls in everything else transitively (RHI backends, rendering, scene system, physics, audio, mathematics, resources, etc.). You only need to explicitly add libraries that aren't already dependencies of `Engine.App` -- in this case, `Images.STB` for the image loader.
 
 ### Assets Directory
 
