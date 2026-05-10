@@ -29,49 +29,75 @@ git clone https://github.com/SedulousWorks/SedulousEngine.git
 Open the workspace in BeefIDE:
 
 1. Launch BeefIDE
-2. File > Open Workspace
-3. Navigate to `SedulousEngine/Code/` and select `BeefSpace.toml`
+2. File > Open > Open Workspace
+3. Select `SedulousEngine/Code/` folder (which contains `BeefSpace.toml`)
 
 The workspace contains all engine libraries, dependencies, and samples organized in workspace folders. The solution explorer (left panel) shows the project tree.
 
+![BeefIDE with the Sedulous workspace open](screenshots/beefide_workspace.png)
+
 To verify everything works, set the startup project to `EngineSandbox` (right-click > Set as Startup Project in the solution explorer) and press F5 to build and run. You should see a 3D scene with a lit cube, animated fox, and particle effects.
+
+![EngineSandbox running](screenshots/enginesandbox_running.png)
 
 The samples (`EngineSandbox`, `Showcase`, `TowerDefense`) are good starting points to study.
 
-## Project Setup
+## Creating a New Project
 
-A Sedulous application is a Beef project that depends on the engine libraries. The minimum dependencies are:
+Your game project lives inside the Sedulous workspace. The recommended location is `SedulousEngine/Code/Samples/MyGame` (or wherever you prefer under the workspace).
 
-```toml
-[Dependencies]
-corlib = "*"
-"Sedulous.Engine.App" = "*"
-"Sedulous.Engine.Core" = "*"
-"Sedulous.Engine.Render" = "*"
-"Sedulous.Runtime" = "*"
-"Sedulous.Renderer" = "*"
-"Sedulous.RHI" = "*"
-"Sedulous.Core.Mathematics" = "*"
-"Sedulous.Resources" = "*"
-"Sedulous.Images.IO" = "*"
-"Sedulous.Images.STB" = "*"
-```
+1. In BeefIDE, right-click the workspace root in the solution explorer
+2. Select **Add New Project**
+3. Name it (e.g., `MyGame`), set Target Type to **Console Application**
+4. Choose a location (e.g., `Samples/MyGame`)
+5. The project is created with a `BeefProj.toml` and a `src/` folder
 
-You also need one RHI backend:
+### Dependencies
 
-```toml
-"Sedulous.RHI.Vulkan" = "*"   # or
-"Sedulous.RHI.DX12" = "*"
-```
+Add the engine dependencies to your project:
 
-## Entry Point
+1. Right-click your project (e.g., `MyGame`) in the solution explorer
+2. Select **Properties**
+3. Go to the **Dependencies** tab
+4. Tick the following:
+
+- `Sedulous.Engine.App`
+- `Sedulous.Engine.Core`
+- `Sedulous.Engine.Render`
+- `Sedulous.Runtime`
+- `Sedulous.Renderer`
+- `Sedulous.RHI`
+- `Sedulous.Core.Mathematics`
+- `Sedulous.Geometry.Resources`
+- `Sedulous.Resources`
+- `Sedulous.Images.IO`
+- `Sedulous.Images.STB`
+
+`Sedulous.Engine.App` already pulls in both RHI backends (Vulkan and DX12), the shell, and other core dependencies transitively. You only need to tick libraries whose types you use directly in your code.
+
+### Assets Directory
+
+The engine discovers an `Assets` folder by searching upward from the working directory. The folder must contain a `.assets` marker file. The engine's own `SedulousEngine/Assets/` directory already has this -- your project uses it automatically when run from within the workspace.
+
+## Creating Source Files
+
+Create two source files in your project:
+
+1. Right-click your project (e.g., `MyGame`) in the solution explorer
+2. Select **Add File**
+3. Enter `Program` as the class name -- this creates `src/Program.bf`
+4. Repeat and enter `MyGameApp` -- this creates `src/MyGameApp.bf`
+
+### MyGameApp.bf
 
 The engine uses `EngineApplication` as the base class for all applications. Override its lifecycle methods to configure and run your game.
 
 ```beef
 using Sedulous.Engine.App;
 
-class MyGame : EngineApplication
+namespace MyGame;
+
+class MyGameApp : EngineApplication
 {
     protected override void OnStartup()
     {
@@ -80,19 +106,24 @@ class MyGame : EngineApplication
 }
 ```
 
+### Program.bf
+
 The entry point creates and runs the application with settings:
 
 ```beef
+using System;
+
+namespace MyGame;
+
 class Program
 {
     static int Main(String[] args)
     {
-        let app = scope MyGame();
+        let app = scope MyGameApp();
         return app.Run(.() {
             Title = "My Game",
             Width = 1280,
-            Height = 720,
-            Backend = .Vulkan
+            Height = 720
         });
     }
 }
@@ -146,142 +177,188 @@ SDLImageLoader.Initialize();
 
 Scenes are created through the `SceneSubsystem`. Each scene gets its own set of component managers, injected automatically by engine subsystems (rendering, physics, animation, etc.) via the `ISceneAware` interface.
 
+Add the following inside `MyGameApp.OnStartup()`, after the image loader initialization:
+
+```beef
+let sceneSub = Context.GetSubsystem<SceneSubsystem>();
+mScene = sceneSub.CreateScene("Main");
+```
+
+You'll also need these usings at the top of `MyGameApp.bf`:
+
 ```beef
 using Sedulous.Engine.Core;
 using Sedulous.Engine;
-
-let sceneSub = Context.GetSubsystem<SceneSubsystem>();
-let scene = sceneSub.CreateScene("MyScene");
 ```
+
+And add a field to store the scene: `private Scene mScene;`
+
+All the code in the following sections goes inside `OnStartup()` after the scene is created. The usings shown with each snippet go at the top of the file.
 
 ## Creating Entities
 
-Entities are lightweight handles in the scene. They have a transform (position, rotation, scale) and can hold components.
+Entities are lightweight handles in the scene. They have a transform (position, rotation, scale) and can hold components. You create them via `mScene.CreateEntity()` and set their transform with `mScene.SetLocalTransform()`.
 
-```beef
-let entity = scene.CreateEntity("MyCube");
-
-scene.SetLocalTransform(entity, .() {
-    Position = .(0, 1, 0),
-    Rotation = .Identity,
-    Scale = .One
-});
-```
+We'll create our first entities in the sections below -- a camera, a light, and meshes.
 
 ## Adding a Camera
 
-Every scene needs at least one camera to render. Create an entity, then add a `CameraComponent` via the camera manager:
+Every scene needs at least one camera to render. Create an entity, then add a `CameraComponent` via the camera manager (add `using Sedulous.Engine.Render;` at the top):
 
 ```beef
-using Sedulous.Engine.Render;
-
-let cameraEntity = scene.CreateEntity("Camera");
-scene.SetLocalTransform(cameraEntity, Transform.CreateLookAt(
-    .(0, 4, 8),     // position
-    .(0, 0, 0)      // look-at target
-));
-
-let cameraMgr = scene.GetModule<CameraComponentManager>();
-let camHandle = cameraMgr.CreateComponent(cameraEntity);
-if (let cam = cameraMgr.Get(camHandle))
+let cam = mScene.CreateEntity("Camera");
+mScene.SetLocalTransform(cam, Transform.CreateLookAt(.(0, 4, 8), .(0, 0, 0)));
+let cameraMgr = mScene.GetModule<CameraComponentManager>();
+if (let c = cameraMgr.Get(cameraMgr.CreateComponent(cam)))
 {
-    cam.IsActive = true;
-    cam.FieldOfView = 60.0f;
-    cam.NearPlane = 0.1f;
-    cam.FarPlane = 1000.0f;
+    c.IsActive = true;
+    c.FieldOfView = 60;
 }
 ```
 
 ## Adding a Light
 
-Without a light, the scene renders black. Add a directional light:
+Without a light, the scene renders black. Add a directional light (add `using Sedulous.Core.Mathematics;` at the top for `Quaternion`):
 
 ```beef
-let lightEntity = scene.CreateEntity("Sun");
-scene.SetLocalTransform(lightEntity, .() {
+let sun = mScene.CreateEntity("Sun");
+mScene.SetLocalTransform(sun, .() {
     Position = .(0, 10, 0),
-    Rotation = Quaternion.CreateFromYawPitchRoll(0.3f, -0.8f, 0),
+    Rotation = Quaternion.CreateFromYawPitchRoll(0.5f, -1.0f, 0),
     Scale = .One
 });
-
-let lightMgr = scene.GetModule<LightComponentManager>();
-let lightHandle = lightMgr.CreateComponent(lightEntity);
-if (let light = lightMgr.Get(lightHandle))
+let lightMgr = mScene.GetModule<LightComponentManager>();
+if (let l = lightMgr.Get(lightMgr.CreateComponent(sun)))
 {
-    light.Type = .Directional;
-    light.Color = .(1, 1, 1);
-    light.Intensity = 2.0f;
-    light.CastShadows = true;
+    l.Type = .Directional;
+    l.Intensity = 1.5f;
+    l.CastsShadows = true;
 }
 ```
 
-## Adding a Mesh
+## Adding Meshes
 
-To display a 3D object, create a mesh resource and attach it to an entity via `MeshComponentManager`:
+To display 3D objects, create mesh resources and attach them to entities via `MeshComponentManager`. Add `using Sedulous.Geometry.Resources;` and `using Sedulous.Resources;` at the top.
+
+First, a ground plane:
 
 ```beef
-using Sedulous.Geometry.Resources;
-
-// Create a procedural cube mesh
-let cubeRes = StaticMeshResource.CreateCube(1, 1, 1);
-ResourceSystem.AddResource(cubeRes);
-
-let cubeEntity = scene.CreateEntity("Cube");
-scene.SetLocalTransform(cubeEntity, .() {
-    Position = .(0, 0.5f, 0),
-    Rotation = .Identity,
-    Scale = .One
-});
-
-let meshMgr = scene.GetModule<MeshComponentManager>();
-let meshHandle = meshMgr.CreateComponent(cubeEntity);
-if (let mesh = meshMgr.Get(meshHandle))
+let planeRes = StaticMeshResource.CreatePlane(10, 10, 1, 1);
+defer planeRes.ReleaseRef();
+ResourceSystem.AddResource<StaticMeshResource>(planeRes);
+let ground = mScene.CreateEntity("Ground");
+let meshMgr = mScene.GetModule<MeshComponentManager>();
+if (let m = meshMgr.Get(meshMgr.CreateComponent(ground)))
 {
-    let meshRef = ResourceRef(.Empty, cubeRes.Name);
-    defer meshRef.Dispose();
-    mesh.SetMeshRef(meshRef);
+    var r = ResourceRef(planeRes.Id, .());
+    defer r.Dispose();
+    m.SetMeshRef(r);
 }
 ```
+
+Then a cube sitting on it:
+
+```beef
+let cubeRes = StaticMeshResource.CreateCube();
+defer cubeRes.ReleaseRef();
+ResourceSystem.AddResource<StaticMeshResource>(cubeRes);
+let cube = mScene.CreateEntity("Cube");
+mScene.SetLocalTransform(cube, .() {
+    Position = .(0, 0.5f, 0), Rotation = .Identity, Scale = .One
+});
+if (let m = meshMgr.Get(meshMgr.CreateComponent(cube)))
+{
+    var r = ResourceRef(cubeRes.Id, .());
+    defer r.Dispose();
+    m.SetMeshRef(r);
+}
+```
+
+Components reference resources via `ResourceRef` -- a GUID + path pair. For programmatic resources (created in code and added via `ResourceSystem.AddResource`), use the resource's GUID with an empty path: `ResourceRef(resource.Id, .())`. For file-based resources, use the protocol path: `ResourceRef(.Empty, "project://models/hero.mesh")`.
+
+`ResourceRef` owns a heap-allocated string, so it needs to be disposed when you're done. The `defer` pattern handles this. The component's `SetMeshRef` makes its own copy, so the original can be disposed immediately.
+
+Meshes without an explicit material use a default white PBR material. The cube will appear as a white lit surface.
+
+## Adding Materials
+
+To give objects color, create a base PBR material and material instances. Add `using Sedulous.Materials;` at the top.
+
+First, add fields to `MyGameApp` for lifetime management:
+
+```beef
+Material mPbrMaterial ~ delete _;
+MaterialInstance mGroundMaterial ~ _?.ReleaseRef();
+MaterialInstance mCubeMaterial ~ _?.ReleaseRef();
+```
+
+Then after the mesh setup code, create the materials and assign them:
+
+```beef
+let renderSub = Context.GetSubsystem<RenderSubsystem>();
+let matSystem = renderSub.RenderContext.MaterialSystem;
+
+mPbrMaterial = Materials.CreatePBR("PBR", "forward",
+    matSystem.WhiteTexture, matSystem.DefaultSampler);
+
+mGroundMaterial = new MaterialInstance(mPbrMaterial);
+mGroundMaterial.SetColor("BaseColor", .(0.4f, 0.4f, 0.4f, 1));
+
+mCubeMaterial = new MaterialInstance(mPbrMaterial);
+mCubeMaterial.SetColor("BaseColor", .(0.9f, 0.2f, 0.2f, 1));
+mCubeMaterial.SetFloat("Roughness", 0.5f);
+```
+
+Assign them to the mesh components using `SetMaterial`:
+
+```beef
+if (let m = meshMgr.GetForEntity(ground))
+    m.SetMaterial(0, mGroundMaterial);
+
+if (let m = meshMgr.GetForEntity(cube))
+    m.SetMaterial(0, mCubeMaterial);
+```
+
+The base `Material` is owned by the app and deleted on shutdown. `MaterialInstance` is ref-counted -- the field destructor calls `ReleaseRef()`. `SetMaterial` on the component AddRefs the instance, so both the component and the app hold a ref.
 
 ## Setting Up Render Settings
 
-Scene-level render settings (sky, ambient light, exposure) are configured via `RenderSceneModule`:
+Scene-level render settings (ambient light, exposure) are configured via `RenderSceneModule`:
 
 ```beef
-if (let renderSettings = scene.GetModule<RenderSceneModule>())
+if (let rs = mScene.GetModule<RenderSceneModule>())
 {
-    renderSettings.AmbientColor = .(0.1f, 0.1f, 0.15f);
-    renderSettings.Exposure = 1.0f;
-    renderSettings.SkyIntensity = 1.0f;
+    rs.AmbientColor = .(0.1f, 0.1f, 0.15f);
+    rs.Exposure = 1.0f;
 }
-```
-
-To set a sky texture from the builtin registry:
-
-```beef
-let skyRef = ResourceRef(.Empty, "builtin://skies/realistic_sky.texture");
-defer skyRef.Dispose();
-renderSettings.SetSkyTextureRef(skyRef);
 ```
 
 ## Complete Example
 
-Putting it all together -- a minimal application with a lit cube on a ground plane:
+Putting it all together -- here's what your two files should look like:
+
+### MyGameApp.bf
 
 ```beef
+using System;
 using Sedulous.Engine.App;
 using Sedulous.Engine.Core;
 using Sedulous.Engine.Render;
 using Sedulous.Engine;
-using Sedulous.Runtime;
 using Sedulous.Core.Mathematics;
 using Sedulous.Geometry.Resources;
 using Sedulous.Resources;
+using Sedulous.Materials;
 using Sedulous.Images.STB;
 
-class MinimalApp : EngineApplication
+namespace MyGame;
+
+class MyGameApp : EngineApplication
 {
     private Scene mScene;
+    private Material mPbrMaterial ~ delete _;
+    private MaterialInstance mGroundMaterial ~ _?.ReleaseRef();
+    private MaterialInstance mCubeMaterial ~ _?.ReleaseRef();
 
     protected override void OnStartup()
     {
@@ -304,41 +381,59 @@ class MinimalApp : EngineApplication
         let sun = mScene.CreateEntity("Sun");
         mScene.SetLocalTransform(sun, .() {
             Position = .(0, 10, 0),
-            Rotation = Quaternion.CreateFromYawPitchRoll(0.3f, -0.8f, 0),
+            Rotation = Quaternion.CreateFromYawPitchRoll(0.5f, -1.0f, 0),
             Scale = .One
         });
         let lightMgr = mScene.GetModule<LightComponentManager>();
         if (let l = lightMgr.Get(lightMgr.CreateComponent(sun)))
         {
             l.Type = .Directional;
-            l.Intensity = 2.0f;
-            l.CastShadows = true;
+            l.Intensity = 1.5f;
+            l.CastsShadows = true;
         }
+
+        // Materials
+        let renderSub = Context.GetSubsystem<RenderSubsystem>();
+        let matSystem = renderSub.RenderContext.MaterialSystem;
+
+        mPbrMaterial = Materials.CreatePBR("PBR", "forward",
+            matSystem.WhiteTexture, matSystem.DefaultSampler);
+
+        mGroundMaterial = new MaterialInstance(mPbrMaterial);
+        mGroundMaterial.SetColor("BaseColor", .(0.4f, 0.4f, 0.4f, 1));
+
+        mCubeMaterial = new MaterialInstance(mPbrMaterial);
+        mCubeMaterial.SetColor("BaseColor", .(0.9f, 0.2f, 0.2f, 1));
+        mCubeMaterial.SetFloat("Roughness", 0.5f);
 
         // Ground plane
         let planeRes = StaticMeshResource.CreatePlane(10, 10, 1, 1);
-        ResourceSystem.AddResource(planeRes);
+        defer planeRes.ReleaseRef();
+        ResourceSystem.AddResource<StaticMeshResource>(planeRes);
         let ground = mScene.CreateEntity("Ground");
         let meshMgr = mScene.GetModule<MeshComponentManager>();
         if (let m = meshMgr.Get(meshMgr.CreateComponent(ground)))
         {
-            let r = ResourceRef(.Empty, planeRes.Name);
+            var r = ResourceRef(planeRes.Id, .());
             defer r.Dispose();
             m.SetMeshRef(r);
+            m.SetMaterial(0, mGroundMaterial);
         }
 
         // Cube
-        let cubeRes = StaticMeshResource.CreateCube(1, 1, 1);
-        ResourceSystem.AddResource(cubeRes);
+        let cubeRes = StaticMeshResource.CreateCube();
+        defer cubeRes.ReleaseRef();
+        ResourceSystem.AddResource<StaticMeshResource>(cubeRes);
         let cube = mScene.CreateEntity("Cube");
         mScene.SetLocalTransform(cube, .() {
             Position = .(0, 0.5f, 0), Rotation = .Identity, Scale = .One
         });
         if (let m = meshMgr.Get(meshMgr.CreateComponent(cube)))
         {
-            let r = ResourceRef(.Empty, cubeRes.Name);
+            var r = ResourceRef(cubeRes.Id, .());
             defer r.Dispose();
             m.SetMeshRef(r);
+            m.SetMaterial(0, mCubeMaterial);
         }
 
         // Render settings
@@ -349,16 +444,36 @@ class MinimalApp : EngineApplication
         }
     }
 }
+```
+
+### Program.bf
+
+```beef
+using System;
+
+namespace MyGame;
 
 class Program
 {
     static int Main(String[] args)
     {
-        let app = scope MinimalApp();
-        return app.Run(.() { Title = "Minimal Sedulous App" });
+        let app = scope MyGameApp();
+        return app.Run(.() {
+            Title = "My Game",
+            Width = 1280,
+            Height = 720
+        });
     }
 }
 ```
+
+Set your project as the startup project (right-click > Set as Startup Project) and press F5. You should see a red cube sitting on a gray ground plane, lit by a directional light with shadows. The camera looks down at the scene from an angle.
+
+> **Note:** The first run may be slow due to shader compilation. Subsequent runs use cached shaders and start much faster.
+
+![Minimal app running](screenshots/minimal_app.png)
+
+From here, try changing values -- move the cube, change the light color, add more entities. The samples in the workspace (`EngineSandbox`, `Showcase`) demonstrate more advanced features.
 
 ## Next Steps
 

@@ -1,6 +1,8 @@
 # Editor
 
-The Sedulous Editor is a standalone application for authoring scenes, importing assets, and configuring game content. It runs an embedded engine runtime for live 3D preview.
+The Sedulous Editor is a standalone application for authoring scenes, importing assets, and configuring game content. It runs an embedded engine runtime for live 3D preview. The editor is entirely optional -- everything it does can also be done in code.
+
+![Sedulous Editor overview](screenshots/editor_overview.png)
 
 ## Project Structure
 
