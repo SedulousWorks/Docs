@@ -1,6 +1,42 @@
 # Getting Started
 
-This guide walks through creating your first Sedulous application -- a window with a 3D scene, a camera, and a lit object.
+Sedulous is a code-first engine -- you build scenes, entities, and game logic entirely in code. No editor is required. This guide walks through creating your first application: a window with a 3D scene, a camera, and a lit object.
+
+## Prerequisites
+
+Before you begin, install the following:
+
+### BeefIDE
+
+Sedulous is written in [Beeflang](https://www.beeflang.org/). Download and install the latest nightly build from [nightly.beeflang.org](https://nightly.beeflang.org/index.html). The nightly includes the compiler, debugger, and IDE with the latest language features and fixes that Sedulous depends on.
+
+### Vulkan SDK (recommended)
+
+If using the Vulkan backend (recommended), install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) from LunarG. Minimum Vulkan 1.3 required. The SDK provides the Vulkan loader, validation layers, and shader tools.
+
+After installation, verify Vulkan 1.3+ is available by running `vulkaninfo` from a terminal.
+
+> **Note:** The DX12 backend is also available on Windows but Vulkan is recommended for development as it provides better validation layer diagnostics.
+
+### Engine Workspace
+
+Clone the Sedulous engine repository:
+
+```
+git clone https://github.com/SedulousWorks/SedulousEngine.git
+```
+
+Open the workspace in BeefIDE:
+
+1. Launch BeefIDE
+2. File > Open Workspace
+3. Navigate to `SedulousEngine/Code/` and select `BeefSpace.toml`
+
+The workspace contains all engine libraries, dependencies, and samples organized in workspace folders. The solution explorer (left panel) shows the project tree.
+
+To verify everything works, set the startup project to `EngineSandbox` (right-click > Set as Startup Project in the solution explorer) and press F5 to build and run. You should see a 3D scene with a lit cube, animated fox, and particle effects.
+
+The samples (`EngineSandbox`, `Showcase`, `TowerDefense`) are good starting points to study.
 
 ## Project Setup
 

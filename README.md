@@ -1,6 +1,6 @@
 # Sedulous Engine Documentation
 
-Sedulous is a game engine written in [Beeflang](https://www.beeflang.org/) with a Vulkan/DX12 rendering backend, ECS-style scene system, and a full editor for scene authoring.
+Sedulous is a code-first game engine written in [Beeflang](https://www.beeflang.org/) with Vulkan/DX12 rendering backends and an ECS-style scene system. Everything is driven by code -- scenes, entities, components, and resources are all created and configured programmatically. An optional editor is available for visual scene authoring and asset management, but it is not required.
 
 ## Manual
 
