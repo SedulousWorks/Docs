@@ -30,7 +30,7 @@ A `ResourceRef` is a serializable reference to a resource -- a GUID plus a proto
 
 ```beef
 // Create a resource ref by path
-let meshRef = ResourceRef(.Empty, "builtin://primitives/cube.mesh");
+var meshRef = ResourceRef(.Empty, "builtin://primitives/cube.mesh");
 defer meshRef.Dispose();  // ResourceRef owns a String, must be disposed
 
 // Check if valid
@@ -47,7 +47,7 @@ if (meshRef.IsValid)
 Components that reference resources follow a setter pattern that deep-copies the ref:
 
 ```beef
-let meshRef = ResourceRef(.Empty, "project://models/hero.mesh");
+var meshRef = ResourceRef(.Empty, "project://models/hero.mesh");
 defer meshRef.Dispose();
 meshComponent.SetMeshRef(meshRef);
 ```
@@ -80,15 +80,15 @@ if (ResourceSystem.LoadByRef<StaticMeshResource>(meshRef) case .Ok(let handle))
 Resources created in code (procedural meshes, generated textures) are added directly:
 
 ```beef
-let cubeRes = StaticMeshResource.CreateCube(1, 1, 1);
-cubeRes.Name.Set("MyCube");
-ResourceSystem.AddResource(cubeRes);
+let cubeRes = StaticMeshResource.CreateCube();
+ResourceSystem.AddResource<StaticMeshResource>(cubeRes);
 ```
 
-After adding, the resource can be referenced by name in `ResourceRef`:
+After adding, reference the resource by its GUID:
 
 ```beef
-let meshRef = ResourceRef(.Empty, cubeRes.Name);
+var meshRef = ResourceRef(cubeRes.Id, .());
+defer meshRef.Dispose();
 ```
 
 ## Resource Types
@@ -101,7 +101,7 @@ Static meshes (`.mesh`) and skinned meshes have their own resource types and man
 
 ```beef
 let plane = StaticMeshResource.CreatePlane(10, 10, 1, 1);
-let cube = StaticMeshResource.CreateCube(1, 1, 1);
+let cube = StaticMeshResource.CreateCube();
 let sphere = StaticMeshResource.CreateSphere(0.5f, 32, 16);
 ```
 
@@ -139,13 +139,13 @@ using Sedulous.Textures.Importer;
 // Standard 2D texture
 if (TextureImporter.Import2D(imagePath) case .Ok(let texRes))
 {
-    ResourceSystem.AddResource(texRes);
+    ResourceSystem.AddResource<TextureResource>(texRes);
 }
 
 // Equirectangular HDR sky
 if (TextureImporter.ImportEquirectangular(hdrPath) case .Ok(let texRes))
 {
-    ResourceSystem.AddResource(texRes);
+    ResourceSystem.AddResource<TextureResource>(texRes);
 }
 ```
 
@@ -225,10 +225,11 @@ Textures use a binary sidecar file (`.texture.bin`) for pixel data.
 
 ## Async Loading
 
-Resources can be loaded asynchronously to avoid stalling the main thread:
+Resources can be loaded asynchronously to avoid stalling the main thread. `LoadResourceAsync` returns a `Job<>` that runs on a worker thread:
 
 ```beef
-ResourceSystem.LoadResourceAsync<TextureResource>(path,
+// With completion callback (fires on main thread during ResourceSystem.Update)
+let job = ResourceSystem.LoadResourceAsync<TextureResource>(path,
     onCompleted: new (result) => {
         if (result case .Ok(let handle))
         {
@@ -238,16 +239,31 @@ ResourceSystem.LoadResourceAsync<TextureResource>(path,
     });
 ```
 
-The job runs on a worker thread. The completion callback fires on the main thread during `ResourceSystem.Update()` (called automatically each frame by `EngineApplication`).
-
-For bulk loading, fire multiple async loads and wait for all to complete:
+You can also block for the result when you need it:
 
 ```beef
-for (let path in assetPaths)
-    ResourceSystem.LoadResourceAsync<StaticMeshResource>(path);
+let job = ResourceSystem.LoadResourceAsync<StaticMeshResource>(path);
+
+// ... do other work ...
+
+// Block until loaded and get the result
+let result = job.WaitForResult();
+if (result case .Ok(let handle))
+{
+    let mesh = handle.Resource;
+}
 ```
 
-The resource system processes completions each frame. Resources become available as they finish loading.
+Or check completion without blocking:
+
+```beef
+if (job.IsCompleted())
+{
+    let result = job.Result;
+}
+```
+
+The completion callback fires on the main thread during `ResourceSystem.Update()` (called automatically each frame by `EngineApplication`). For bulk loading, fire multiple async loads -- the resource system processes completions each frame as they finish.
 
 ## Hot-Reload
 

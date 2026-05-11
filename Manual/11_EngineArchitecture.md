@@ -126,8 +126,8 @@ if (ResourceSystem.LoadResource<TextureResource>(path) case .Ok(let handle))
 }
 
 // Add a programmatic resource
-let mesh = StaticMeshResource.CreateCube(1, 1, 1);
-ResourceSystem.AddResource(mesh);
+let mesh = StaticMeshResource.CreateCube();
+ResourceSystem.AddResource<StaticMeshResource>(mesh);
 ```
 
 Subsystems register their resource managers during `OnInit`. For example, `RenderSubsystem` registers `StaticMeshResourceManager`, `TextureResourceManager`, and `MaterialResourceManager`. `AudioSubsystem` registers `AudioClipResourceManager` and `SoundCueResourceManager`.

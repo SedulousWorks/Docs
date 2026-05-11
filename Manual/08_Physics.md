@@ -20,7 +20,7 @@ protected override void OnConfigure(Context context)
 Add physics to an entity by attaching a `RigidBodyComponent`:
 
 ```beef
-let physicsMgr = scene.GetModule<RigidBodyComponentManager>();
+let physicsMgr = scene.GetModule<PhysicsComponentManager>();
 if (let body = physicsMgr.Get(physicsMgr.CreateComponent(entity)))
 {
     body.BodyType = .Dynamic;       // .Static, .Dynamic, .Kinematic
@@ -29,8 +29,8 @@ if (let body = physicsMgr.Get(physicsMgr.CreateComponent(entity)))
     body.Friction = 0.5f;
 
     // Collision shape
-    body.ShapeType = .Box;          // .Box, .Sphere, .Capsule
-    body.ShapeSize = .(1, 1, 1);    // Half-extents for box, radius for sphere
+    body.Shape.Type = .Box;                   // .Box, .Sphere, .Capsule
+    body.Shape.HalfExtents = .(0.5f, 0.5f, 0.5f);  // Box half-extents
 }
 ```
 
@@ -44,11 +44,11 @@ if (let body = physicsMgr.Get(physicsMgr.CreateComponent(entity)))
 
 ### Collision Shapes
 
-| Shape | ShapeSize meaning |
-|-------|------------------|
-| `Box` | Half-extents (x, y, z) |
-| `Sphere` | Radius in X component |
-| `Capsule` | Radius in X, half-height in Y |
+| Shape | Properties |
+|-------|------------|
+| `Box` | `HalfExtents` -- Vector3 half-size per axis |
+| `Sphere` | `Radius` -- sphere radius |
+| `Capsule` | `Radius` + `HalfHeight` -- capsule dimensions |
 
 ## Fixed Update
 

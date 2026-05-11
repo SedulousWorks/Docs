@@ -51,12 +51,12 @@ Attach particle effects to entities via `ParticleComponent`:
 let particleMgr = scene.GetModule<ParticleComponentManager>();
 if (let particle = particleMgr.Get(particleMgr.CreateComponent(entity)))
 {
-    let effectRef = ResourceRef(.Empty, "project://effects/fire.particle");
+    var effectRef = ResourceRef(.Empty, "project://effects/fire.particle");
     defer effectRef.Dispose();
     particle.SetEffectRef(effectRef);
 
     // Optional texture override
-    let texRef = ResourceRef(.Empty, "project://textures/spark.texture");
+    var texRef = ResourceRef(.Empty, "project://textures/spark.texture");
     defer texRef.Dispose();
     particle.SetTextureRef(texRef);
 }

@@ -21,8 +21,8 @@ Entities that need pathfinding get a `NavAgentComponent`:
 let navMgr = scene.GetModule<NavigationComponentManager>();
 if (let agent = navMgr.Get(navMgr.CreateComponent(entity)))
 {
-    agent.Speed = 3.5f;
-    agent.Radius = 0.5f;
+    agent.MaxSpeed = 3.5f;
+    agent.Radius = 0.6f;
     agent.Height = 2.0f;
     agent.MaxAcceleration = 8.0f;
 }
@@ -33,13 +33,10 @@ if (let agent = navMgr.Get(navMgr.CreateComponent(entity)))
 Set a target position and the agent will pathfind and move toward it:
 
 ```beef
-agent.SetDestination(targetPosition);
+agent.MoveTarget = targetPosition;
 
-// Check arrival
-if (agent.HasReachedDestination)
-{
-    // Pick next waypoint
-}
+// Clear target to stop
+agent.MoveTarget = null;
 ```
 
 ## Navigation Obstacles

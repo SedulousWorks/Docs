@@ -46,7 +46,7 @@ if (let light = lightMgr.Get(lightMgr.CreateComponent(sun)))
     light.Type = .Directional;
     light.Color = .(1, 0.95f, 0.9f);
     light.Intensity = 2.0f;
-    light.CastShadows = true;
+    light.CastsShadows = true;
     light.ShadowBias = 0.002f;
 }
 ```
@@ -80,12 +80,12 @@ Static meshes are the primary way to display 3D geometry. Attach a `MeshComponen
 let meshMgr = scene.GetModule<MeshComponentManager>();
 if (let mesh = meshMgr.Get(meshMgr.CreateComponent(entity)))
 {
-    let meshRef = ResourceRef(.Empty, "project://models/building.mesh");
+    var meshRef = ResourceRef(.Empty, "project://models/building.mesh");
     defer meshRef.Dispose();
     mesh.SetMeshRef(meshRef);
 
     // Optionally set per-slot materials
-    let matRef = ResourceRef(.Empty, "project://materials/brick.material");
+    var matRef = ResourceRef(.Empty, "project://materials/brick.material");
     defer matRef.Dispose();
     mesh.SetMaterialRef(0, matRef);
 }
@@ -99,7 +99,7 @@ For animated characters, use `SkinnedMeshComponent` with a skeleton and animatio
 let skinnedMgr = scene.GetModule<SkinnedMeshComponentManager>();
 if (let mesh = skinnedMgr.Get(skinnedMgr.CreateComponent(entity)))
 {
-    let meshRef = ResourceRef(.Empty, "project://models/character.mesh");
+    var meshRef = ResourceRef(.Empty, "project://models/character.mesh");
     defer meshRef.Dispose();
     mesh.SetMeshRef(meshRef);
 }
@@ -129,7 +129,7 @@ mat.SetFloat("Roughness", 0.4f);
 mat.SetFloat("Metallic", 0.0f);
 
 let matRes = new MaterialResource(mat, true);
-ResourceSystem.AddResource(matRes);
+ResourceSystem.AddResource<MaterialResource>(matRes);
 ```
 
 ### Blend Modes
@@ -149,7 +149,7 @@ Scene-level rendering parameters are stored on `RenderSceneModule`, automaticall
 if (let rs = scene.GetModule<RenderSceneModule>())
 {
     // Sky
-    let skyRef = ResourceRef(.Empty, "builtin://skies/realistic_sky.texture");
+    var skyRef = ResourceRef(.Empty, "builtin://skies/realistic_sky.texture");
     defer skyRef.Dispose();
     rs.SetSkyTextureRef(skyRef);
     rs.SkyIntensity = 1.2f;
@@ -166,7 +166,7 @@ These values are serialized with the scene and editable in the editor inspector 
 
 ## Shadows
 
-Shadows are automatic for lights with `CastShadows = true`. The renderer supports:
+Shadows are automatic for lights with `CastsShadows = true`. The renderer supports:
 
 - **Cascaded shadow maps** for directional lights (4 cascades)
 - **Cubemap shadows** for point lights (6 faces)
@@ -175,7 +175,7 @@ Shadows are automatic for lights with `CastShadows = true`. The renderer support
 Shadow quality is controlled per-light:
 
 ```beef
-light.CastShadows = true;
+light.CastsShadows = true;
 light.ShadowBias = 0.002f;
 light.ShadowNormalBias = 0.5f;
 ```
@@ -188,7 +188,7 @@ Textured billboard quads for in-world effects, icons, or 2D elements.
 let spriteMgr = scene.GetModule<SpriteComponentManager>();
 if (let sprite = spriteMgr.Get(spriteMgr.CreateComponent(entity)))
 {
-    let texRef = ResourceRef(.Empty, "project://textures/icon.texture");
+    var texRef = ResourceRef(.Empty, "project://textures/icon.texture");
     defer texRef.Dispose();
     sprite.SetTextureRef(texRef);
     sprite.Size = .(1, 1);
@@ -204,7 +204,7 @@ Projected textures onto surfaces using depth reconstruction.
 let decalMgr = scene.GetModule<DecalComponentManager>();
 if (let decal = decalMgr.Get(decalMgr.CreateComponent(entity)))
 {
-    let texRef = ResourceRef(.Empty, "project://textures/scorch.texture");
+    var texRef = ResourceRef(.Empty, "project://textures/scorch.texture");
     defer texRef.Dispose();
     decal.SetTextureRef(texRef);
     decal.Size = .(2, 2, 0.5f);  // Width, height, depth of projection box

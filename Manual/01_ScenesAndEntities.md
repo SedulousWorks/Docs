@@ -142,7 +142,9 @@ let parentHandle = scene.GetParent(turret);
 ### Iterating Children
 
 ```beef
-for (let child in scene.GetChildren(parent))
+let children = scope List<EntityHandle>();
+scene.GetChildren(parent, children);
+for (let child in children)
 {
     let childName = scene.GetEntityName(child);
     // ...
@@ -164,7 +166,7 @@ let handle = meshMgr.CreateComponent(entity);
 // Configure the component
 if (let mesh = meshMgr.Get(handle))
 {
-    let meshRef = ResourceRef(.Empty, "builtin://primitives/cube.mesh");
+    var meshRef = ResourceRef(.Empty, "builtin://primitives/cube.mesh");
     defer meshRef.Dispose();
     mesh.SetMeshRef(meshRef);
 }

@@ -27,20 +27,18 @@ protected override void OnConfigure(Context context)
     context.RegisterSubsystem(new AudioSubsystem(ResourceSystem));
 }
 
-protected override void OnStartup()
-{
-    // Register format decoders
-    let audioSub = Context.GetSubsystem<AudioSubsystem>();
-    audioSub.DecoderFactory.RegisterDefaultDecoders();  // WAV, OGG, MP3, FLAC
-}
 ```
 
 ## Audio Clips
 
-An `AudioClip` holds decoded PCM audio data. Load from file using the decoder factory:
+An `AudioClip` holds decoded PCM audio data. Decode from file using an `AudioDecoderFactory`:
 
 ```beef
-let decoder = audioSub.DecoderFactory;
+using Sedulous.Audio.Decoders;
+
+let decoder = scope AudioDecoderFactory();
+decoder.RegisterDefaultDecoders();  // WAV, OGG, MP3, FLAC
+
 if (decoder.DecodeFile("audio/explosion.wav") case .Ok(let clip))
 {
     // clip.SampleRate, clip.Channels, clip.Duration, clip.Data
@@ -51,12 +49,14 @@ Supported formats: `.wav`, `.ogg` (Vorbis), `.mp3`, `.flac`.
 
 ### Audio Format
 
+`AudioFormat` is an enum describing the PCM sample format:
+
 ```beef
-struct AudioFormat
+enum AudioFormat
 {
-    int32 SampleRate;   // e.g., 44100, 48000
-    int32 Channels;     // 1 = mono, 2 = stereo
-    int32 BitsPerSample; // 16 or 32
+    Int16,    // Signed 16-bit integer (2 bytes per sample)
+    Int32,    // Signed 32-bit integer (4 bytes per sample)
+    Float32   // 32-bit float (4 bytes per sample)
 }
 ```
 
@@ -72,7 +72,7 @@ The easiest way to play positioned audio is via `AudioSourceComponent`:
 let audioMgr = scene.GetModule<AudioSourceComponentManager>();
 if (let source = audioMgr.Get(audioMgr.CreateComponent(entity)))
 {
-    let clipRef = ResourceRef(.Empty, "project://audio/explosion.audioclip");
+    var clipRef = ResourceRef(.Empty, "project://audio/explosion.audioclip");
     defer clipRef.Dispose();
     source.SetClipRef(clipRef);
 
@@ -82,7 +82,7 @@ if (let source = audioMgr.Get(audioMgr.CreateComponent(entity)))
     source.AutoPlay = true;
 
     // 3D spatialization
-    source.Is3D = true;
+    source.Spatial = true;
     source.MinDistance = 1.0f;    // Full volume within this range
     source.MaxDistance = 50.0f;   // Inaudible beyond this range
 }
@@ -95,7 +95,7 @@ The entity's transform position is used for 3D spatialization each frame.
 For sounds with variation, use a `SoundCueResource`. A sound cue selects randomly from a pool of clips with configurable pitch/volume ranges:
 
 ```beef
-let cueRef = ResourceRef(.Empty, "project://audio/footstep.soundcue");
+var cueRef = ResourceRef(.Empty, "project://audio/footstep.soundcue");
 defer cueRef.Dispose();
 source.SetCueRef(cueRef);
 ```
@@ -117,11 +117,11 @@ For sounds not tied to an entity (UI clicks, one-shots):
 let audioSub = Context.GetSubsystem<AudioSubsystem>();
 
 // One-shot (fire-and-forget)
-audioSub.PlayOneShot(clip, volume: 0.5f);
+audioSub.PlayOneShot(clip, 0.5f);
 
-// Music (streaming, with crossfade)
-audioSub.PlayMusic(musicClip, fadeIn: 1.0f);
-audioSub.StopMusic(fadeOut: 2.0f);
+// Music (streaming from file)
+audioSub.PlayMusic("audio/music/theme.ogg", loop: true, volume: 0.5f);
+audioSub.StopMusic();
 ```
 
 ## 3D Spatialization
@@ -132,7 +132,9 @@ audioSub.StopMusic(fadeOut: 2.0f);
 |----------|-------------|
 | `MinDistance` | Distance at which volume is 100% |
 | `MaxDistance` | Distance at which volume reaches 0% |
-| `AttenuationModel` | `.InverseDistance`, `.Linear`, `.Exponential` |
+| `AttenuationCurve` | `.Linear`, `.InverseDistance`, `.Logarithmic`, `.InverseDistanceSquared` |
+
+Attenuation is configured via a `SoundAttenuator` struct on the source, which also supports cone emission angles, distance-based low-pass filtering, and doppler.
 
 The listener's position and orientation (from its entity transform) determine the perceived direction and distance of each source.
 
@@ -141,16 +143,18 @@ The listener's position and orientation (from its entity transform) determine th
 Audio buses allow grouping and controlling volume for categories of sounds:
 
 ```beef
-let busSystem = audioSub.BusSystem;
+let busSystem = audioSub.AudioSystem.BusSystem;
 
-// Create buses
-let masterBus = busSystem.GetMasterBus();
-let sfxBus = busSystem.CreateBus("SFX", masterBus);
-let musicBus = busSystem.CreateBus("Music", masterBus);
-let uiBus = busSystem.CreateBus("UI", masterBus);
+// Default buses (SFX and Music) are created automatically.
+// Create additional buses as needed:
+let uiBus = busSystem.CreateBus("UI");
 
-// Route sources to buses
-source.Bus = sfxBus;
+// Access existing buses by name
+let sfxBus = busSystem.GetBus("SFX");
+let musicBus = busSystem.GetBus("Music");
+
+// Route sources to buses via name
+source.BusName = "SFX";  // default for AudioSourceComponent
 
 // Control volume per bus
 sfxBus.Volume = 0.8f;
@@ -194,14 +198,14 @@ using Sedulous.Audio.Effects;
 
 // Apply reverb to the SFX bus
 let reverb = new ReverbEffect();
-reverb.DecayTime = 1.5f;
-reverb.WetMix = 0.3f;
+reverb.RoomSize = 0.7f;
+reverb.WetDryMix = 0.3f;
 sfxBus.AddEffect(reverb);
 
-// Low-pass filter on a source (muffled sound)
+// Low-pass filter on a bus
 let lowPass = new LowPassFilter();
-lowPass.CutoffFrequency = 2000.0f;
-source.AddEffect(lowPass);
+lowPass.CutoffHz = 2000.0f;
+sfxBus.AddEffect(lowPass);
 ```
 
 ## Audio Graph
@@ -247,7 +251,7 @@ let importer = new AudioImporter(decoderFactory);
 if (importer.Import("sounds/explosion.wav") case .Ok(let resource))
 {
     // resource is an AudioClipResource ready for registration
-    ResourceSystem.AddResource(resource);
+    ResourceSystem.AddResource<AudioClipResource>(resource);
 }
 ```
 

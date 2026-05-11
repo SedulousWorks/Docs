@@ -15,7 +15,7 @@ Attach both a `SkinnedMeshComponent` and a `SkeletalAnimationComponent` to the s
 let skinnedMgr = scene.GetModule<SkinnedMeshComponentManager>();
 if (let mesh = skinnedMgr.Get(skinnedMgr.CreateComponent(entity)))
 {
-    let meshRef = ResourceRef(.Empty, "project://models/character.mesh");
+    var meshRef = ResourceRef(.Empty, "project://models/character.mesh");
     defer meshRef.Dispose();
     mesh.SetMeshRef(meshRef);
 }
@@ -24,11 +24,11 @@ if (let mesh = skinnedMgr.Get(skinnedMgr.CreateComponent(entity)))
 let animMgr = scene.GetModule<SkeletalAnimationComponentManager>();
 if (let anim = animMgr.Get(animMgr.CreateComponent(entity)))
 {
-    let skelRef = ResourceRef(.Empty, "project://models/character.skeleton");
+    var skelRef = ResourceRef(.Empty, "project://models/character.skeleton");
     defer skelRef.Dispose();
     anim.SetSkeletonRef(skelRef);
 
-    let clipRef = ResourceRef(.Empty, "project://animations/walk.animation");
+    var clipRef = ResourceRef(.Empty, "project://animations/walk.animation");
     defer clipRef.Dispose();
     anim.SetClipRef(clipRef);
 
@@ -60,11 +60,11 @@ For complex animation logic -- blending between walk, run, idle based on game pa
 let graphMgr = scene.GetModule<AnimationGraphComponentManager>();
 if (let graph = graphMgr.Get(graphMgr.CreateComponent(entity)))
 {
-    let skelRef = ResourceRef(.Empty, "project://models/character.skeleton");
+    var skelRef = ResourceRef(.Empty, "project://models/character.skeleton");
     defer skelRef.Dispose();
     graph.SetSkeletonRef(skelRef);
 
-    let graphRef = ResourceRef(.Empty, "project://animations/character.animgraph");
+    var graphRef = ResourceRef(.Empty, "project://animations/character.animgraph");
     defer graphRef.Dispose();
     graph.SetGraphRef(graphRef);
 }
@@ -75,11 +75,11 @@ if (let graph = graphMgr.Get(graphMgr.CreateComponent(entity)))
 Animation graphs expose parameters that game code can set to drive transitions:
 
 ```beef
-if (graph.GraphInstance != null)
+if (graph.GraphPlayer != null)
 {
-    graph.GraphInstance.SetFloat("Speed", playerSpeed);
-    graph.GraphInstance.SetBool("IsGrounded", isGrounded);
-    graph.GraphInstance.SetTrigger("Jump");
+    graph.GraphPlayer.SetFloat("Speed", playerSpeed);
+    graph.GraphPlayer.SetBool("IsGrounded", isGrounded);
+    graph.GraphPlayer.SetTrigger("Jump");
 }
 ```
 
@@ -107,7 +107,7 @@ posTrack.AddKeyframe(12.0f, .(5, 0, 0));
 let propAnimMgr = scene.GetModule<PropertyAnimationComponentManager>();
 if (let propAnim = propAnimMgr.Get(propAnimMgr.CreateComponent(entity)))
 {
-    let clipRef = ResourceRef(.Empty, "project://animations/orbit.propanim");
+    var clipRef = ResourceRef(.Empty, "project://animations/orbit.propanim");
     defer clipRef.Dispose();
     propAnim.SetClipRef(clipRef);
     propAnim.AutoPlay = true;
