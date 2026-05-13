@@ -12,7 +12,7 @@ Open a directory as a project. The editor creates a `.sedproj` file to store pro
 MyProject/
   .sedproj                    # Project settings (OpenDDL)
   editor_layout.oddl          # Dock panel layout
-  project.registry            # Resource GUID -> path mapping
+  project.registry            # Resource GUID -> URI map for the project mount
   scenes/
     level1.scene
   models/
@@ -66,12 +66,20 @@ Click on empty space (deselect all entities) to see scene-level settings in the 
 
 ## Asset Browser
 
-The bottom panel shows all registered resources organized by directory.
+The bottom panel shows all mounted resource collections, organized as a tree on the left and a content view on the right.
+
+The tree's root nodes are **mounts** -- the editor always shows `builtin` (engine-supplied primitives, materials, skies) and `project` (the open project's assets). Additional mounts can be added via the toolbar:
+
+- **Mount** -- open a `.registry` file and mount its containing directory under a new scheme.
+- **Create** -- pick a directory and create a fresh empty mount + registry inside it.
+- **Unmount** -- remove a user-mounted scheme (the locked `builtin` and `project` entries can't be unmounted).
+
+Each mount has its own index file (e.g. `project.registry`) that maps GUIDs to URIs within that scheme. The index is persisted automatically whenever you create, rename, delete, or import an asset.
 
 ### Navigation
 
 - Click folders to navigate
-- Breadcrumb bar shows the current path (clickable segments)
+- Breadcrumb bar shows the current path (clickable segments) prefixed by the mount scheme
 - Toggle between list and grid view
 
 ### Context Menu (Right-Click)
@@ -83,7 +91,7 @@ The bottom panel shows all registered resources organized by directory.
 
 **On asset:**
 - Delete
-- Copy Path (protocol path, e.g. `project://models/hero.mesh`)
+- Copy Path (scheme-prefixed URI, e.g. `project://models/hero.mesh`)
 - Copy GUID
 - Show in Explorer
 
